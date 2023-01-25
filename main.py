@@ -27,10 +27,10 @@ def repository_downloader(repository: AvailableRepositories, version: str):
     ) as progress:
         progress.add_task(
             description="Cloning the frontend repository ...", total=None)
-        os.system("rm -rf " + repository)
+        os.popen("rm -rf " + repository)
         command = "git clone -q --depth 1 --branch " + version + \
             " " + get_repository_url(repository) + " > /dev/null 2>&1"
-        os.system(command)
+        os.popen(command)
     print(f"Cloned {repository} repository.")
 
 
@@ -53,9 +53,9 @@ def migration_fixer():
     ) as progress:
         progress.add_task(
             description="Running migration fixes...", total=None)
-        os.system(
+        os.popen(
             """docker exec -it compose-database-1 /usr/bin/mongosh "mongodb://root:example@database:27017/employeeDomain?directConnection=true&authSource=admin&replicaSet=replicaset&retryWrites=true" --eval 'db.groups.updateMany({systemType:"RETIRED"},{$set:{systemType:"RETIREE"}})' > /dev/null""")
-        os.system(
+        os.popen(
             """docker exec -it compose-database-1 /usr/bin/mongosh "mongodb://root:example@database:27017/employeeDomain?directConnection=true&authSource=admin&replicaSet=replicaset&retryWrites=true" --eval 'db.groups.updateMany({systemType:"TEMP_LAY_OFF"},{$set:{systemType:"TEMP_LAID_OFF"}})' > /dev/null""")
 
 
@@ -113,8 +113,8 @@ def deploy():
     ) as progress:
         progress.add_task(
             description="Starting docker containers ...", total=None)
-        os.system("docker-compose down")
-        os.system("docker-compose up -d")
+        os.popen("docker-compose down")
+        os.popen("docker-compose up -d")
 
     # check if ~/dump directory exists
     if os.path.exists(os.path.expanduser("~/dump")):
@@ -129,8 +129,8 @@ def deploy():
             ) as progress:
                 progress.add_task(
                     description="Restoring data from ~/dump ...", total=None)
-                os.system("""docker cp ~/dump compose-database-1:/dump""")
-                os.system("""docker exec -it compose-database-1 /usr/bin/mongorestore --username root --password example --authenticationDatabase admin --db employeeDomain --drop dump/""")
+                os.popen("""docker cp ~/dump compose-database-1:/dump""")
+                os.popen("""docker exec -it compose-database-1 /usr/bin/mongorestore --username root --password example --authenticationDatabase admin --db employeeDomain --drop dump/""")
 
     run_migration_fixes = typer.confirm(
         "Do you want to restore data using dum data in ~/dump?", default=False)
