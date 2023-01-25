@@ -1,8 +1,7 @@
 import typer
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 import os
 import sys
-from time import sleep
 from enum import Enum
 import inquirer
 
@@ -16,22 +15,25 @@ class AvailableRepositories(str, Enum):
 
 
 def get_repository_url(repository: AvailableRepositories):
-    return f"git@bitbucket.org:employeeportal/{repository}.git"
+    return f"git@bitbucket.org:employeeportal/{repository.value}.git"
 
 
 def repository_downloader(repository: AvailableRepositories, version: str):
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
+        TimeElapsedColumn(),
         transient=True,
     ) as progress:
         progress.add_task(
             description="Cloning the frontend repository ...", total=None)
-        os.popen("rm -rf " + repository)
+        os.system("rm -rf " + repository.value)
         command = "git clone -q --depth 1 --branch " + version + \
             " " + get_repository_url(repository) + " > /dev/null 2>&1"
-        os.popen(command)
-    print(f"Cloned {repository} repository.")
+        os.system(command)
+        os.system(
+            f"cp ./{repository.value}.env {repository.value}/.env")
+    print(f"Cloned {repository.value} repository.")
 
 
 def get_available_versions(repository: AvailableRepositories):
@@ -49,13 +51,14 @@ def migration_fixer():
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
+        TimeElapsedColumn(),
         transient=True,
     ) as progress:
         progress.add_task(
             description="Running migration fixes...", total=None)
-        os.popen(
+        os.system(
             """docker exec -it compose-database-1 /usr/bin/mongosh "mongodb://root:example@database:27017/employeeDomain?directConnection=true&authSource=admin&replicaSet=replicaset&retryWrites=true" --eval 'db.groups.updateMany({systemType:"RETIRED"},{$set:{systemType:"RETIREE"}})' > /dev/null""")
-        os.popen(
+        os.system(
             """docker exec -it compose-database-1 /usr/bin/mongosh "mongodb://root:example@database:27017/employeeDomain?directConnection=true&authSource=admin&replicaSet=replicaset&retryWrites=true" --eval 'db.groups.updateMany({systemType:"TEMP_LAY_OFF"},{$set:{systemType:"TEMP_LAID_OFF"}})' > /dev/null""")
 
 
@@ -106,15 +109,20 @@ def deploy():
         print("docker-compose.yml file doesn't exist...")
         sys.exit(1)
 
+    should_use_new_build = typer.confirm(
+        "Do you want to use new build?", default=True)
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
+        TimeElapsedColumn(),
         transient=True,
     ) as progress:
         progress.add_task(
             description="Starting docker containers ...", total=None)
-        os.popen("docker-compose down")
-        os.popen("docker-compose up -d")
+        os.system("docker-compose down > /dev/null 2>&1")
+        os.system(
+            f"docker-compose up -d {'--build' if should_use_new_build else ''} > /dev/null 2>&1")
 
     # check if ~/dump directory exists
     if os.path.exists(os.path.expanduser("~/dump")):
@@ -125,15 +133,18 @@ def deploy():
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
+                TimeElapsedColumn(),
                 transient=True,
             ) as progress:
                 progress.add_task(
                     description="Restoring data from ~/dump ...", total=None)
-                os.popen("""docker cp ~/dump compose-database-1:/dump""")
-                os.popen("""docker exec -it compose-database-1 /usr/bin/mongorestore --username root --password example --authenticationDatabase admin --db employeeDomain --drop dump/""")
+                os.system(
+                    """docker cp ~/dump compose-database-1:/dump""")
+                os.system(
+                    """docker exec -it compose-database-1 /usr/bin/mongorestore --username root --password example --authenticationDatabase admin --db employeeDomain --drop dump/""")
 
     run_migration_fixes = typer.confirm(
-        "Do you want to restore data using dum data in ~/dump?", default=False)
+        "Do you want to run migration fixes?", default=True)
     if run_migration_fixes:
         migration_fixer()
 
@@ -141,11 +152,32 @@ def deploy():
 
 
 @app.command()
-def bye(name: str, formal: bool = False):
-    if formal:
-        print(f"Goodbye {name}")
-    else:
-        print(f"Bye {name}")
+def destroy():
+    typer.confirm(
+        "Are you sure you want to destroy docker containers?", abort=True)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        TimeElapsedColumn(),
+        transient=True,
+    ) as progress:
+        progress.add_task(
+            description="Destroying docker containers ...", total=None)
+        os.system("docker-compose down > /dev/null 2>&1")
+    print("Docker containers are destroyed.")
+    delete_images = typer.confirm(
+        "Do you want to delete docker images?", default=True)
+    if delete_images:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            TimeElapsedColumn(),
+            transient=True,
+        ) as progress:
+            progress.add_task(
+                description="Deleting docker images ...", total=None)
+            os.system("docker rmi $(docker images -q) > /dev/null 2>&1")
+        print("Docker images are deleted.")
 
 
 if __name__ == "__main__":
