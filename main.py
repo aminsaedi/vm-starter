@@ -109,6 +109,10 @@ def deploy():
         print("docker-compose.yml file doesn't exist...")
         sys.exit(1)
 
+    # check if ./database directory exists and create it if not
+    if not os.path.exists(os.path.expanduser("./database")):
+        os.system("mkdir ./database")
+
     should_use_new_build = typer.confirm(
         "Do you want to use new build?", default=True)
 
