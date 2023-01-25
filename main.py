@@ -1,6 +1,7 @@
 import typer
 from rich.progress import Progress, SpinnerColumn, TextColumn
 import os
+import sys
 from time import sleep
 from enum import Enum
 import inquirer
@@ -77,7 +78,7 @@ def deploy():
 
     if len(versions) == 0:
         print("No available version found...")
-        exit()
+        sys.exit(1)
 
     selected_version = None
     use_latest = typer.confirm(
@@ -103,7 +104,7 @@ def deploy():
     # check if docker-compose.yml file exists
     if not os.path.exists(os.path.expanduser("docker-compose.yml")):
         print("docker-compose.yml file doesn't exist...")
-        exit()
+        sys.exit(1)
 
     with Progress(
         SpinnerColumn(),
