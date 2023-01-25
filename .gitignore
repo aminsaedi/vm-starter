@@ -1,0 +1,5 @@
+build/
+dist/
+frontend/
+backend/
+.DS_Store
