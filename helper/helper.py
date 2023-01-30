@@ -45,7 +45,7 @@ class RepositoryHelper:
         self.major_versions = intersect
 
     def __get_latest_version(self, ver: int, all_versions: list) -> str:
-        return next(x for x in all_versions[::-1] if bool(re.search(f"v{ver}\.+\d+\.\d+", x)))
+        return next(x for x in all_versions[::-1] if bool(re.search(f"(v|V){ver}\.+\d+\.\d+", x)))
 
     def __get_combined_formatted_label(self, ver: int) -> str:
         latest_backend = self.__get_latest_version(ver, self.backend_versions)
