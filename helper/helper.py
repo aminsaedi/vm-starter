@@ -15,12 +15,12 @@ class RepositoryHelper:
     def __init__(self):
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True) as progress:
             progress.add_task(description="Initializing...", total=None)
-            self.backend_versions = [
+            # self.backend_versions = [
                 "v1.0.0", "v1.0.1", "v1.0.2", "v1.1.0", "v1.1.2", "v2.0.0", "v2.0.1", "v3.0.0"]
-            self.frontend_versions = [
+            # self.frontend_versions = [
                 "v1.0.0", "v1.1.2", "v1.3.4",  "v2.0.0", "v2.0.4"]
-            # self.backend_versions = self.__read_repo_tags(self.__backend_repo)
-            # self.frontend_versions = self.__read_repo_tags(self.__frontend_repo)
+            self.backend_versions = self.__read_repo_tags(self.__backend_repo)
+            self.frontend_versions = self.__read_repo_tags(self.__frontend_repo)
             self.__get_available_versions()
 
     def __intersection(self, list1, list2):
