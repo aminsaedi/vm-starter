@@ -80,6 +80,8 @@ class RepositoryHelper:
             os.system("rm -rf frontend")
             os.system(commands["backend"])
             os.system(commands["frontend"])
+            os.system("cp .env backend/.env")
+            os.system("cp .env frontend/.env")
 
 
 class DockerHelper:
