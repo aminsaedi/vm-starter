@@ -17,9 +17,9 @@ class Deployer:
 
         questions = [
             inquirer.List('version',
-                        message="Which version do you want to deploy?",
-                        choices=versions,
-                        ),
+                          message="Which version do you want to deploy?",
+                          choices=versions,
+                          ),
         ]
 
         answers = inquirer.prompt(questions)
@@ -42,8 +42,7 @@ class Deployer:
         if run_migration_fixes:
             docker.migration_fixer()
 
-
-        if  docker.is_dump_exists():
+        if docker.is_dump_exists():
             print("Database dump directory exists...")
             should_restore_data = typer.confirm(
                 "Do you want to restore data using dum data in ~/dump?", default=False)
@@ -53,7 +52,7 @@ class Deployer:
         print("Your application is ready to use.")
 
         return
-    
+
     def destroy(self):
 
         typer.confirm(
@@ -67,3 +66,8 @@ class Deployer:
         if delete_images:
             docker.prune_images()
             print("Docker images are deleted.")
+
+        clean_work_directory = typer.confirm(
+            "Do you want to clean work directory?", default=True)
+        if clean_work_directory:
+            docker.clean_work_directory()

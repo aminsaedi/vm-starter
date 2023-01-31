@@ -151,3 +151,7 @@ class DockerHelper:
                 """docker cp ~/dump compose-database-1:/dump""")
             os.system(
                 """docker exec -it compose-database-1 /usr/bin/mongorestore --username root --password example --authenticationDatabase admin --db employeeDomain --drop dump/""")
+
+    def clean_work_directory(self):
+        os.system("rm -rf ./backend")
+        os.system("rm -rf ./frontend")
