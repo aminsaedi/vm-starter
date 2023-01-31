@@ -113,6 +113,7 @@ class DockerHelper:
                 description="Starting containers...", total=None)
             os.system(
                 f"docker-compose up -d {'--build' if new_build else ''} > /dev/null 2>&1")
+        print("Containers started successfully")
 
     def down(self):
         os.system("docker-compose down > /dev/null 2>&1")
