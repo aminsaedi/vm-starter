@@ -86,8 +86,6 @@ class RepositoryHelper:
 
 class DockerHelper:
 
-    __is_up = False
-
     def __init__(self):
         if not os.path.exists(os.path.expanduser("docker-compose.yml")):
             raise Exception("docker-compose.yml not found")
@@ -103,30 +101,18 @@ class DockerHelper:
         if os.system("docker-compose --version > /dev/null") != 0:
             raise Exception("Docker-compose not installed")
 
-        # check if docker-compose is running
-        if os.system("docker-compose ps > /dev/null") != 0:
-            print("FIXME: set __is_up to False")
 
     def up(self, new_build: bool = False):
-        if self.__is_up:
-            raise Exception("Application is already up")
         os.system(
             f"docker-compose up -d {'--build' if new_build else ''} > /dev/null 2>&1")
-        self.__is_up = True
 
     def down(self):
-        if not self.__is_up:
-            # no need to raise exception
-            print("WARN: Application is already down")
         os.system("docker-compose down > /dev/null 2>&1")
-        self.__is_up = False
     
     def prune_images(self):
         os.system("docker rmi $(docker images -q) > /dev/null 2>&1")
 
     def migration_fixer(self):
-        if not self.__is_up:
-            raise Exception("Cannot run migration fixer, docker-compose is not running")
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
