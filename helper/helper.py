@@ -20,7 +20,8 @@ class RepositoryHelper:
             # self.frontend_versions = [
             #    "v1.0.0", "v1.1.2", "v1.3.4",  "v2.0.0", "v2.0.4"]
             self.backend_versions = self.__read_repo_tags(self.__backend_repo)
-            self.frontend_versions = self.__read_repo_tags(self.__frontend_repo)
+            self.frontend_versions = self.__read_repo_tags(
+                self.__frontend_repo)
             self.__get_available_versions()
 
     def __intersection(self, list1, list2):
@@ -101,14 +102,21 @@ class DockerHelper:
         if os.system("docker-compose --version > /dev/null") != 0:
             raise Exception("Docker-compose not installed")
 
-
     def up(self, new_build: bool = False):
-        os.system(
-            f"docker-compose up -d {'--build' if new_build else ''} > /dev/null 2>&1")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            TimeElapsedColumn(),
+            transient=True,
+        ) as progress:
+            progress.add_task(
+                description="Starting containers...", total=None)
+            os.system(
+                f"docker-compose up -d {'--build' if new_build else ''} > /dev/null 2>&1")
 
     def down(self):
         os.system("docker-compose down > /dev/null 2>&1")
-    
+
     def prune_images(self):
         os.system("docker rmi $(docker images -q) > /dev/null 2>&1")
 
@@ -125,11 +133,10 @@ class DockerHelper:
                 """docker exec -it compose-database-1 /usr/bin/mongosh "mongodb://root:example@database:27017/employeeDomain?directConnection=true&authSource=admin&replicaSet=replicaset&retryWrites=true" --eval 'db.groups.updateMany({systemType:"RETIRED"},{$set:{systemType:"RETIREE"}})' > /dev/null""")
             os.system(
                 """docker exec -it compose-database-1 /usr/bin/mongosh "mongodb://root:example@database:27017/employeeDomain?directConnection=true&authSource=admin&replicaSet=replicaset&retryWrites=true" --eval 'db.groups.updateMany({systemType:"TEMP_LAY_OFF"},{$set:{systemType:"TEMP_LAID_OFF"}})' > /dev/null""")
-    
+
     def is_dump_exists(self) -> bool:
         return os.path.exists(os.path.expanduser("~/dump"))
 
-    
     def restore_data(self):
         with Progress(
             SpinnerColumn(),
@@ -143,4 +150,3 @@ class DockerHelper:
                 """docker cp ~/dump compose-database-1:/dump""")
             os.system(
                 """docker exec -it compose-database-1 /usr/bin/mongorestore --username root --password example --authenticationDatabase admin --db employeeDomain --drop dump/""")
-    
