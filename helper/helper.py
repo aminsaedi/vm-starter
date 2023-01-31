@@ -66,8 +66,8 @@ class RepositoryHelper:
         latest_frontend = self.__get_latest_version(
             ver, self.frontend_versions)
         commands = {
-            "backend": f"git clone -q --depth 1 --branch {latest_backend} {self.__backend_repo} > /dev/null",
-            "frontend": f"git clone -q --depth 1 --branch {latest_frontend} {self.__frontend_repo} > /dev/null"
+            "backend": f"git clone -q --depth 1 --branch {latest_backend} {self.__backend_repo} > /dev/null 2>&1",
+            "frontend": f"git clone -q --depth 1 --branch {latest_frontend} {self.__frontend_repo} > /dev/null 2>&1"
         }
         with Progress(
             SpinnerColumn(),
