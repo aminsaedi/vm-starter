@@ -1,5 +1,6 @@
 import re
 import os
+import inquirer
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 
@@ -90,6 +91,7 @@ class DockerHelper:
     def __init__(self):
         if not os.path.exists(os.path.expanduser("docker-compose.yml")):
             raise Exception("docker-compose.yml not found")
+            exit(1)
 
         if not os.path.exists(os.path.expanduser("./database")):
             os.system("mkdir ./database")
@@ -98,9 +100,8 @@ class DockerHelper:
         if os.system("docker info > /dev/null") != 0:
             raise Exception("Docker not running")
 
-        # check if docker-compose is installed
-        if os.system("docker-compose --version > /dev/null") != 0:
-            raise Exception("Docker-compose not installed")
+        if os.system("docker compose version > /dev/null") != 0:
+            raise Exception("Docker compose not installed")
 
     def up(self, new_build: bool = False):
         with Progress(
@@ -112,43 +113,70 @@ class DockerHelper:
             progress.add_task(
                 description="Starting containers...", total=None)
             os.system(
-                f"docker-compose up -d {'--build' if new_build else ''} > /dev/null 2>&1")
-        print("Containers started successfully")
+                f"docker compose up -d {'--build' if new_build else ''} >> /tmp/orange-build.log 2>&1")
+
+        print("Waiting 10 seconds  for containers to start...")
+        if os.system("sleep 10; docker ps | grep compose | wc -l | grep 3 >> /tmp/orange-build.log") != 0:
+            print("Error starting containers - check /tmp/orange.error")
+            exit(1)
+        else:
+            print("Containers started successfully")
 
     def down(self):
-        os.system("docker-compose down > /dev/null 2>&1")
+        os.system("docker compose down > /dev/null 2>&1")
 
     def prune_images(self):
         os.system("docker rmi $(docker images -q) > /dev/null 2>&1")
 
-    def migration_fixer(self):
+    def restore_dump(self):
+        options = ["Don't restore dump"]
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
-            TimeElapsedColumn(),
             transient=True,
         ) as progress:
             progress.add_task(
-                description="Running migration fixes...", total=None)
+                description="Checking if dump exists...", total=None)
+            is_local_dump_exists = os.path.exists(os.path.expanduser("~/dump"))
+            if is_local_dump_exists:
+                options.append("Local dump in ~/dump")
+            # clone the repo into a temp directory
             os.system(
-                """docker exec -it compose-database-1 /usr/bin/mongosh "mongodb://root:example@database:27017/employeeDomain?directConnection=true&authSource=admin&replicaSet=replicaset&retryWrites=true" --eval 'db.groups.updateMany({systemType:"RETIRED"},{$set:{systemType:"RETIREE"}})' > /dev/null""")
-            os.system(
-                """docker exec -it compose-database-1 /usr/bin/mongosh "mongodb://root:example@database:27017/employeeDomain?directConnection=true&authSource=admin&replicaSet=replicaset&retryWrites=true" --eval 'db.groups.updateMany({systemType:"TEMP_LAY_OFF"},{$set:{systemType:"TEMP_LAID_OFF"}})' > /dev/null""")
+                "rm -rf /tmp/mongodbdumps; git clone --depth=1 git@bitbucket.org:employeeportal/mongodbdumps.git /tmp/mongodbdumps > /dev/null 2>&1")
+            # list all files in the repo with names that start with "v" and end with ".zip"
+            remote_dump_files = os.popen(
+                "ls /tmp/mongodbdumps | egrep '^(v|V).*\.zip$'").read().split()
+            for i in remote_dump_files:
+                options.append(f"Remote dump: {i}")
 
-    def is_dump_exists(self) -> bool:
-        return os.path.exists(os.path.expanduser("~/dump"))
+        question = [
+            inquirer.List('version',
+                          message="Which version do you want to deploy?",
+                          choices=options,
+                          ),
+        ]
 
-    def restore_data(self):
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            TimeElapsedColumn(),
-            transient=True,
-        ) as progress:
-            progress.add_task(
-                description="Restoring data from ~/dump ...", total=None)
+        answer = inquirer.prompt(question)["version"]
+
+        if answer == "Don't restore dump":
+            return
+
+        if answer == "Local dump in ~/dump":
             os.system(
                 """docker cp ~/dump compose-database-1:/dump""")
+            os.system(
+                """docker exec -it compose-database-1 /usr/bin/mongorestore --username root --password example --authenticationDatabase admin --db employeeDomain --drop dump/""")
+        else:
+            answer = answer.replace("Remote dump: ", "")
+            answer = answer.replace("Remote dump: ", "")
+            print(answer)
+            # unzip the dump file into the temp directory
+            os.system(
+                f"mkdir -p /tmp/employeeDomain/dump; unzip -q /tmp/mongodbdumps/{answer} -d /tmp/mongodbdumps/dump/")
+            # copy the dump file to the database container
+            os.system(
+                """docker cp /tmp/mongodbdumps/dump/employeeDomain compose-database-1:/dump""")
+            # restore the dump file
             os.system(
                 """docker exec -it compose-database-1 /usr/bin/mongorestore --username root --password example --authenticationDatabase admin --db employeeDomain --drop dump/""")
 

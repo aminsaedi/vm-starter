@@ -37,17 +37,7 @@ class Deployer:
         docker.down()
         docker.up(new_build=should_use_new_build)
 
-        run_migration_fixes = typer.confirm(
-            "Do you want to run migration fixes?", default=True)
-        if run_migration_fixes:
-            docker.migration_fixer()
-
-        if docker.is_dump_exists():
-            print("Database dump directory exists...")
-            should_restore_data = typer.confirm(
-                "Do you want to restore data using dum data in ~/dump?", default=False)
-            if should_restore_data:
-                docker.restore_data()
+        docker.restore_dump()
 
         print("Your application is ready to use.")
 

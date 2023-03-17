@@ -166,3 +166,9 @@ pyvenv.cfg
 
 frontend/
 backend/
+
+
+backend.env
+frontend.env
+
+docker-compose.yml
